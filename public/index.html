@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 뉴스 & PDF 팩트체커 & 요약기</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+    }
+    .dark .glass-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(55, 65, 81, 0.8);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full font-sans transition-colors duration-300">
+  
+  <!-- Header Navbar -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-file-shield text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-slate-900 dark:text-white">TruthLens AI</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">PDF & 뉴스 팩트체크 및 다각도 요약기</p>
+        </div>
+      </div>
+      
+      <!-- Dark Mode Toggle -->
+      <div class="flex items-center space-x-3">
+        <button id="themeToggleBtn" class="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i class="fa-solid fa-moon dark:hidden"></i>
+          <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Input Mode Switcher (PDF File vs News URL) -->
+    <section class="space-y-4">
+      <div class="flex border-b border-slate-200 dark:border-slate-800 text-sm font-semibold">
+        <button id="tabPdf" class="px-5 py-3 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center space-x-2 transition">
+          <i class="fa-solid fa-file-pdf text-base"></i>
+          <span>PDF 문서 업로드</span>
+        </button>
+        <button id="tabUrl" class="px-5 py-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-2 transition">
+          <i class="fa-solid fa-link text-base"></i>
+          <span>기사 URL 직접 입력</span>
+        </button>
+      </div>
+
+      <!-- Area 1: PDF Dropzone -->
+      <div id="pdfInputContainer" class="block">
+        <div id="dropZone" class="group relative cursor-pointer border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 rounded-2xl p-8 sm:p-12 text-center bg-white dark:bg-slate-900 hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition-all duration-300 shadow-sm">
+          <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden">
+          
+          <div class="space-y-4 pointer-events-none">
+            <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div>
+              <p class="text-base font-semibold text-slate-800 dark:text-slate-100">
+                PDF 파일을 드래그하여 놓거나 <span class="text-blue-600 dark:text-blue-400 underline decoration-2 underline-offset-4">클릭하여 선택</span>하세요
+              </p>
+              <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">최대 20MB 이하의 논문, 뉴스 보도자료, 보고서 (PDF형식)</p>
+            </div>
+          </div>
+
+          <!-- File Info Box -->
+          <div id="fileInfoBox" class="hidden mt-4 p-4 bg-blue-50 dark:bg-slate-800/90 border border-blue-200 dark:border-blue-800/80 rounded-xl flex items-center justify-between text-left">
+            <div class="flex items-center space-x-3 overflow-hidden">
+              <i class="fa-solid fa-file-pdf text-red-500 text-3xl shrink-0"></i>
+              <div class="truncate">
+                <p id="fileName" class="text-sm font-semibold text-slate-900 dark:text-white truncate">document.pdf</p>
+                <p id="fileSize" class="text-xs text-slate-500 dark:text-slate-400">0 KB</p>
+              </div>
+            </div>
+            <button id="removeFileBtn" class="p-2 text-slate-400 hover:text-red-500 rounded-lg transition" title="파일 삭제">
+              <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Area 2: News URL Input -->
+      <div id="urlInputContainer" class="hidden">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+          <label for="urlInput" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            분석할 뉴스 기사 링크 (URL)
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <input type="url" id="urlInput" placeholder="https://news.example.com/article/12345" class="w-full pl-10 pr-24 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+            <span id="urlValidationBadge" class="absolute right-3 top-2.5 px-2.5 py-1 text-xs font-semibold rounded-md hidden">
+              유효성
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 dark:text-slate-500">HTTP/HTTPS 형식의 정확한 인터넷 기사 주소를 입력해 주세요.</p>
+        </div>
+      </div>
+
+      <!-- Execute Button -->
+      <button id="analyzeBtn" class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-blue-500/25 transition duration-200 flex items-center justify-center space-x-2">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>AI 팩트체크 & 쉬운 요약 실행</span>
+      </button>
+    </section>
+
+    <!-- Loading Screen -->
+    <div id="loadingSection" class="hidden py-16 text-center space-y-6">
+      <div class="relative w-20 h-20 mx-auto">
+        <div class="absolute inset-0 rounded-full bg-blue-500/20 animate-pulse-ring"></div>
+        <div class="w-20 h-20 border-4 border-blue-200 dark:border-blue-900 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-blue-600 dark:text-blue-400">
+          <i class="fa-solid fa-brain text-xl"></i>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <h3 class="text-lg font-bold text-slate-800 dark:text-white">기사를 읽고 Gemini가 분석 중입니다...</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">팩트 검증, 어린이용 비유 요약, 핵심 정리 및 카드뉴스 원고를 생성하고 있습니다.</p>
+      </div>
+    </div>
+
+    <!-- Results Visualization Section -->
+    <section id="resultSection" class="hidden space-y-8">
+      
+      <!-- Fact-Check Verdict Header Card -->
+      <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-6">
+          <div class="space-y-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">AI 종합 검증 진단</span>
+            <div class="flex items-center space-x-3">
+              <span id="verdictBadge" class="px-4 py-1.5 rounded-full text-sm font-extrabold shadow-sm bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                진짜뉴스
+              </span>
+              <span id="trustScoreText" class="text-2xl font-black text-slate-900 dark:text-white">0점</span>
+            </div>
+          </div>
+          
+          <div class="w-full md:w-64 space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span>신뢰도 지수</span>
+              <span id="scorePercent">0%</span>
+            </div>
+            <div class="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div id="scoreBar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 space-y-3">
+          <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center">
+            <i class="fa-solid fa-magnifying-glass-chart text-blue-500 mr-2"></i>판단 이유 및 검증 근거
+          </h4>
+          <p id="factCheckReason" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60"></p>
+        </div>
+
+        <div class="mt-6">
+          <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center">
+            <i class="fa-solid fa-link text-indigo-500 mr-1.5"></i>교차 검증 및 관련 관점 기사
+          </h4>
+          <div id="relatedLinksContainer" class="grid sm:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+
+      <!-- 3 Main Summary Cards Grid -->
+      <div class="grid md:grid-cols-2 gap-6">
+        
+        <!-- CARD 1: Easy Metaphor -->
+        <div class="glass-card rounded-2xl p-6 shadow-sm border-t-4 border-t-amber-500 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center space-x-2">
+                <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 flex items-center justify-center font-bold text-lg">👧</span>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white">초등학생도 이해하는 쉬운 말 해설</h3>
+              </div>
+              <span class="text-xs font-medium px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 rounded-md border border-amber-200 dark:border-amber-800">
+                비유와 예시
+              </span>
+            </div>
+            <p id="card1Text" class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"></p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex justify-end">
+            <button class="copy-btn text-xs text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 flex items-center space-x-1" data-target="card1Text">
+              <i class="fa-regular fa-copy"></i>
+              <span>복사하기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD 2: 3-Line Summary -->
+        <div class="glass-card rounded-2xl p-6 shadow-sm border-t-4 border-t-blue-500 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center space-x-2">
+                <span class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 flex items-center justify-center font-bold text-base">📌</span>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white">핵심 테이크어웨이 (3줄 요약)</h3>
+              </div>
+              <span class="text-xs font-medium px-2.5 py-1 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-md border border-blue-200 dark:border-blue-800">
+                핵심 요약
+              </span>
+            </div>
+            <ul id="card2List" class="space-y-3 text-sm text-slate-700 dark:text-slate-300"></ul>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex justify-end">
+            <button class="copy-btn text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center space-x-1" data-target="card2List">
+              <i class="fa-regular fa-copy"></i>
+              <span>전체 복사</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CARD 3: SNS Card News Previewer -->
+      <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-sm border-t-4 border-t-indigo-500 space-y-6">
+        <div class="flex items-center space-x-2">
+          <span class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 flex items-center justify-center font-bold text-base">📱</span>
+          <div>
+            <h3 class="font-bold text-base text-slate-900 dark:text-white">SNS 카드뉴스 템플릿 (4슬라이드)</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">SNS에 바로 활용할 수 있는 4컷 슬라이드 구성안입니다.</p>
+          </div>
+        </div>
+
+        <div id="card3SlidesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+        <div class="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <span>💡 팁: 각 카드 상단의 복사 버튼을 누르면 해당 슬라이드 텍스트를 바로 가져올 수 있습니다.</span>
+          <button id="copyAllSlidesBtn" class="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center space-x-1">
+            <i class="fa-regular fa-copy"></i>
+            <span>전체 슬라이드 텍스트 복사</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 z-50 pointer-events-none">
+    <i class="fa-solid fa-circle-info text-blue-400"></i>
+    <span id="toastMsg">알림 메시지</span>
+  </div>
+
+  <script>
+    const state = {
+      inputTab: 'pdf', // 'pdf' or 'url'
+      selectedFile: null,
+      base64Pdf: '',
+      analysisResult: null
+    };
+
+    const elements = {
+      themeToggleBtn: document.getElementById('themeToggleBtn'),
+      tabPdf: document.getElementById('tabPdf'),
+      tabUrl: document.getElementById('tabUrl'),
+      pdfInputContainer: document.getElementById('pdfInputContainer'),
+      urlInputContainer: document.getElementById('urlInputContainer'),
+      dropZone: document.getElementById('dropZone'),
+      pdfFileInput: document.getElementById('pdfFileInput'),
+      fileInfoBox: document.getElementById('fileInfoBox'),
+      fileName: document.getElementById('fileName'),
+      fileSize: document.getElementById('fileSize'),
+      removeFileBtn: document.getElementById('removeFileBtn'),
+      urlInput: document.getElementById('urlInput'),
+      urlValidationBadge: document.getElementById('urlValidationBadge'),
+      analyzeBtn: document.getElementById('analyzeBtn'),
+      loadingSection: document.getElementById('loadingSection'),
+      resultSection: document.getElementById('resultSection'),
+      verdictBadge: document.getElementById('verdictBadge'),
+      trustScoreText: document.getElementById('trustScoreText'),
+      scorePercent: document.getElementById('scorePercent'),
+      scoreBar: document.getElementById('scoreBar'),
+      factCheckReason: document.getElementById('factCheckReason'),
+      relatedLinksContainer: document.getElementById('relatedLinksContainer'),
+      card1Text: document.getElementById('card1Text'),
+      card2List: document.getElementById('card2List'),
+      card3SlidesContainer: document.getElementById('card3SlidesContainer'),
+      copyAllSlidesBtn: document.getElementById('copyAllSlidesBtn'),
+      toast: document.getElementById('toast'),
+      toastMsg: document.getElementById('toastMsg')
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initEventListeners();
+    });
+
+    function initTheme() {
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    function initEventListeners() {
+      elements.themeToggleBtn.addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+        localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+      });
+
+      elements.tabPdf.addEventListener('click', () => switchTab('pdf'));
+      elements.tabUrl.addEventListener('click', () => switchTab('url'));
+
+      elements.dropZone.addEventListener('click', (e) => {
+        if (e.target !== elements.removeFileBtn && !elements.removeFileBtn.contains(e.target)) {
+          elements.pdfFileInput.click();
+        }
+      });
+
+      elements.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.dropZone.classList.add('border-blue-500', 'bg-blue-50/50');
+      });
+
+      elements.dropZone.addEventListener('dragleave', () => {
+        elements.dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+      });
+
+      elements.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+        if (e.dataTransfer.files.length > 0) {
+          processPdfFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      elements.pdfFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          processPdfFile(e.target.files[0]);
+        }
+      });
+
+      elements.removeFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.selectedFile = null;
+        state.base64Pdf = '';
+        elements.pdfFileInput.value = '';
+        elements.fileInfoBox.classList.add('hidden');
+      });
+
+      elements.urlInput.addEventListener('input', () => {
+        const val = elements.urlInput.value.trim();
+        if (!val) {
+          elements.urlValidationBadge.classList.add('hidden');
+          return;
+        }
+        const isValid = isValidHttpUrl(val);
+        elements.urlValidationBadge.classList.remove('hidden');
+        if (isValid) {
+          elements.urlValidationBadge.textContent = "✓ 유효한 URL";
+          elements.urlValidationBadge.className = "absolute right-3 top-2.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300";
+        } else {
+          elements.urlValidationBadge.textContent = "✕ 무효한 URL";
+          elements.urlValidationBadge.className = "absolute right-3 top-2.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300";
+        }
+      });
+
+      // API 호출 이벤트 (Serverless Endpoint 호출)
+      elements.analyzeBtn.addEventListener('click', async () => {
+        if (state.inputTab === 'pdf' && !state.selectedFile) {
+          showToast("분석할 PDF 파일을 업로드하세요.");
+          return;
+        }
+        if (state.inputTab === 'url' && !isValidHttpUrl(elements.urlInput.value.trim())) {
+          showToast("유효한 기사 URL 주소를 입력하세요.");
+          return;
+        }
+
+        elements.resultSection.classList.add('hidden');
+        elements.loadingSection.classList.remove('hidden');
+        elements.analyzeBtn.disabled = true;
+
+        try {
+          const bodyPayload = state.inputTab === 'pdf' 
+            ? { type: 'pdf', pdfBase64: state.base64Pdf }
+            : { type: 'url', url: elements.urlInput.value.trim() };
+
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload)
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || '분석에 실패했습니다.');
+          }
+
+          state.analysisResult = data;
+          renderResults(data);
+          elements.resultSection.classList.remove('hidden');
+          showToast("기사 분석이 완료되었습니다!");
+        } catch (err) {
+          console.error(err);
+          showToast(`오류 발생: ${err.message}`);
+        } finally {
+          elements.loadingSection.classList.add('hidden');
+          elements.analyzeBtn.disabled = false;
+        }
+      });
+
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.getAttribute('data-target');
+          const targetEl = document.getElementById(targetId);
+          if (targetEl) {
+            copyToClipboard(targetEl.innerText);
+            showToast("클립보드에 복사되었습니다.");
+          }
+        });
+      });
+
+      elements.copyAllSlidesBtn.addEventListener('click', () => {
+        if (!state.analysisResult || !state.analysisResult.card3_snsSlides) return;
+        const text = state.analysisResult.card3_snsSlides
+          .map(s => `[슬라이드 ${s.slide}] ${s.title}\n${s.content}`)
+          .join('\n\n');
+        copyToClipboard(text);
+        showToast("전체 카드뉴스 슬라이드가 복사되었습니다.");
+      });
+    }
+
+    function switchTab(tab) {
+      state.inputTab = tab;
+      if (tab === 'pdf') {
+        elements.tabPdf.className = "px-5 py-3 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center space-x-2 transition font-semibold";
+        elements.tabUrl.className = "px-5 py-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-2 transition font-normal";
+        elements.pdfInputContainer.classList.remove('hidden');
+        elements.urlInputContainer.classList.add('hidden');
+      } else {
+        elements.tabUrl.className = "px-5 py-3 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center space-x-2 transition font-semibold";
+        elements.tabPdf.className = "px-5 py-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-2 transition font-normal";
+        elements.urlInputContainer.classList.remove('hidden');
+        elements.pdfInputContainer.classList.add('hidden');
+      }
+    }
+
+    function processPdfFile(file) {
+      if (file.type !== 'application/pdf') {
+        showToast("PDF 형식의 파일만 지원합니다.");
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        showToast("파일 크기는 최대 20MB까지 허용됩니다.");
+        return;
+      }
+
+      state.selectedFile = file;
+      elements.fileName.textContent = file.name;
+      elements.fileSize.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+      elements.fileInfoBox.classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        state.base64Pdf = reader.result.split(',')[1];
+      };
+      reader.onerror = () => {
+        showToast("PDF 읽기에 실패하였습니다.");
+      };
+    }
+
+    function isValidHttpUrl(string) {
+      let url;
+      try {
+        url = new URL(string);
+      } catch (_) {
+        return false;
+      }
+      return url.protocol === "http:" || url.protocol === "https:";
+    }
+
+    function renderResults(data) {
+      const fc = data.factCheck || {};
+      elements.verdictBadge.textContent = fc.verdict || '판단 보류';
+      
+      if ((fc.verdict || '').includes('진짜')) {
+        elements.verdictBadge.className = "px-4 py-1.5 rounded-full text-sm font-extrabold shadow-sm bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300";
+      } else if ((fc.verdict || '').includes('가짜')) {
+        elements.verdictBadge.className = "px-4 py-1.5 rounded-full text-sm font-extrabold shadow-sm bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300";
+      } else {
+        elements.verdictBadge.className = "px-4 py-1.5 rounded-full text-sm font-extrabold shadow-sm bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300";
+      }
+
+      const score = fc.score || 0;
+      elements.trustScoreText.textContent = `${score}점`;
+      elements.scorePercent.textContent = `${score}%`;
+      elements.scoreBar.style.width = `${score}%`;
+      elements.factCheckReason.textContent = fc.reason || '';
+
+      elements.relatedLinksContainer.innerHTML = '';
+      const links = fc.relatedArticles || [];
+      if (links.length > 0) {
+        links.forEach(item => {
+          const a = document.createElement('a');
+          a.href = item.url || '#';
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.className = "block p-3 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/70 rounded-xl hover:border-blue-500 transition group";
+          a.innerHTML = `
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+              <span class="truncate">${item.title}</span>
+              <i class="fa-solid fa-arrow-up-right-from-square ml-2 text-slate-400 group-hover:text-blue-500"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">${item.perspective || ''}</p>
+          `;
+          elements.relatedLinksContainer.appendChild(a);
+        });
+      } else {
+        elements.relatedLinksContainer.innerHTML = '<p class="text-xs text-slate-400">연관된 교차 기사가 없습니다.</p>';
+      }
+
+      elements.card1Text.textContent = data.card1_easyExplanation || '';
+
+      elements.card2List.innerHTML = '';
+      (data.card2_threeLines || []).forEach((line, idx) => {
+        const li = document.createElement('li');
+        li.className = "flex items-start space-x-2.5";
+        li.innerHTML = `
+          <span class="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">${idx + 1}</span>
+          <span class="leading-snug">${line}</span>
+        `;
+        elements.card2List.appendChild(li);
+      });
+
+      renderCardNewsSlides(data.card3_snsSlides || []);
+    }
+
+    function renderCardNewsSlides(slides) {
+      elements.card3SlidesContainer.innerHTML = '';
+      slides.forEach((slide, idx) => {
+        const card = document.createElement('div');
+        card.className = "glass-card p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3 relative group hover:shadow-md transition";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2">
+              <span>SLIDE 0${slide.slide || idx + 1}</span>
+              <button class="copy-slide-btn opacity-60 hover:opacity-100 transition" data-text="${slide.title}: ${slide.content}" title="이 슬라이드 복사">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
+            <h4 class="font-bold text-sm text-slate-900 dark:text-white leading-snug mb-2">${slide.title}</h4>
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">${slide.content}</p>
+          </div>
+          <div class="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-500" style="width: ${(idx + 1) * 25}%"></div>
+          </div>
+        `;
+        elements.card3SlidesContainer.appendChild(card);
+      });
+
+      document.querySelectorAll('.copy-slide-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          copyToClipboard(btn.getAttribute('data-text'));
+          showToast("해당 슬라이드 텍스트가 복사되었습니다.");
+        });
+      });
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try { document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(textArea);
+      }
+    }
+
+    function showToast(msg) {
+      elements.toastMsg.textContent = msg;
+      elements.toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        elements.toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
+```
+
+### 요약 및 구성 내용
+1. **단일 HTML 파일 저장**: `public/index.html` 경로로 파일이 작성되었습니다.
+2. **보안 연동**: 클라이언트 UI에서 API Key를 보관하지 않고, Vercel의 백엔드 `/api/analyze`로 업로드된 PDF 또는 URL 데이터를 전송합니다.
+3. **인터랙티브 기능**: PDF 파일 드래그앤드롭 업로드, FileReader Base64 인코딩, 실시간 URL 검증, 다크모드, 텍스트 복사 툴팁 기능이 포함되어 있습니다.
