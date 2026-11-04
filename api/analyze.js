@@ -81,8 +81,8 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 가장 최신에 안정적으로 지원되는 gemini-2.5-flash 모델 엔드포인트 적용
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // 최신 권장 모델인 gemini-3.8-flash 엔드포인트 적용[cite: 8]
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
     
     const response = await fetch(geminiUrl, {
       method: 'POST',
@@ -99,23 +99,4 @@ export default async function handler(req, res) {
       throw new Error(`Gemini API 응답 파싱 실패: ${responseText.substring(0, 100)}`);
     }
 
-    if (!response.ok) {
-      const errorMsg = result.error?.message || `Gemini API 호출 실패 (Status: ${response.status})`;
-      throw new Error(errorMsg);
-    }
-
-    const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!jsonText) {
-      throw new Error('AI 모델로부터 올바른 텍스트 응답을 받지 못했습니다.');
-    }
-
-    // 마크다운 백틱 제거 후 안전하게 JSON 파싱
-    const cleanJsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsedData = JSON.parse(cleanJsonText);
-
-    return res.status(200).json(parsedData);
-  } catch (error) {
-    console.error('Analysis API Error:', error);
-    return res.status(500).json({ error: error.message || '서버 분석 처리 중 오류가 발생했습니다.' });
-  }
-}
+    if (!response.ok)
