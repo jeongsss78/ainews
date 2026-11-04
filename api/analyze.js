@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       }
     };
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
     
     let response;
     let responseText;
