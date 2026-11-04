@@ -79,16 +79,36 @@ export default async function handler(req, res) {
       }
     };
 
-    // 구글 API에서 공식 요구하는 gemini-3.8-flash 모델 적용
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
     
-    const response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let response;
+    let responseText;
+    let retries = 3;
 
-    const responseText = await response.text();
+    // 서버 과부하(트래픽 폭주) 시 최대 3번까지 자동 재시도 로직
+    while (retries > 0) {
+      response = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      responseText = await response.text();
+
+      if (response.ok) {
+        break; // 성공하면 탈출
+      }
+
+      // 과부하(503 등) 상태라면 1초 대기 후 재시도
+      if (response.status === 503 || responseText.includes('high demand')) {
+        retries--;
+        if (retries === 0) break;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+
+      break;
+    }
     
     let result;
     try {
