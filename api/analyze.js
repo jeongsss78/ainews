@@ -81,8 +81,8 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 가장 안정적인 최신 gemini-1.5-flash 엔드포인트 사용
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 가장 최신에 안정적으로 지원되는 gemini-2.5-flash 모델 엔드포인트 적용
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     
     const response = await fetch(geminiUrl, {
       method: 'POST',
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       throw new Error('AI 모델로부터 올바른 텍스트 응답을 받지 못했습니다.');
     }
 
-    // 혹시 모를 마크다운 백틱 제거 후 안전하게 파싱
+    // 마크다운 백틱 제거 후 안전하게 JSON 파싱
     const cleanJsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsedData = JSON.parse(cleanJsonText);
 
