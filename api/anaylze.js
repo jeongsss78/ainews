@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   const promptText = `
 당신은 베테랑 팩트체크 전문 기자이자 쉬운 설명의 달인입니다.
-제공된 문서(또는 URL 정보)를 정밀 분석하여 반드시 지정된 JSON 구조로만 답변해주세요.
+제공된 문서(또는 URL 정보)를 정밀 분석하여 반드시 지정된 JSON 구조로만 답변해주세요. 마크다운 백틱(\`\`\`json 등)은 절대 포함하지 말고 순수 JSON 문자열만 반환하세요.
 
 [필수 요구 응답 형식 (JSON Schema)]
 {
@@ -81,7 +81,8 @@ export default async function handler(req, res) {
   };
 
   try {
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // 가장 안정적인 최신 gemini-1.5-flash 엔드포인트 사용
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const response = await fetch(geminiUrl, {
       method: 'POST',
@@ -89,14 +90,28 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error?.message || `Gemini API 호출 실패 (Status: ${response.status})`);
+    const responseText = await response.text();
+    
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Gemini API 응답 파싱 실패: ${responseText.substring(0, 100)}`);
     }
 
-    const result = await response.json();
+    if (!response.ok) {
+      const errorMsg = result.error?.message || `Gemini API 호출 실패 (Status: ${response.status})`;
+      throw new Error(errorMsg);
+    }
+
     const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsedData = JSON.parse(jsonText);
+    if (!jsonText) {
+      throw new Error('AI 모델로부터 올바른 텍스트 응답을 받지 못했습니다.');
+    }
+
+    // 혹시 모를 마크다운 백틱 제거 후 안전하게 파싱
+    const cleanJsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsedData = JSON.parse(cleanJsonText);
 
     return res.status(200).json(parsedData);
   } catch (error) {
