@@ -79,8 +79,8 @@ export default async function handler(req, res) {
       }
     };
 
-    // 안정성이 검증된 gemini-2.0-flash 모델 엔드포인트 사용
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // 구글 API에서 공식 요구하는 gemini-3.8-flash 모델 적용
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
     
     const response = await fetch(geminiUrl, {
       method: 'POST',
